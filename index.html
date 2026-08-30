@@ -3660,14 +3660,24 @@
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
 
-                            // Close the Send Robux popup immediately after the gift succeeds.
-                            document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (overlay) {
-                                if (overlay && overlay.parentNode) {
-                                    overlay.parentNode.removeChild(overlay);
+                            // Close EVERY layer of the Send Robux UI after a successful gift.
+                            // The confirmation popup is one overlay, while the original
+                            // Send Robux sheet is the .fui-base-sheet-overlay underneath it.
+                            document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (confirmOverlay) {
+                                if (confirmOverlay && confirmOverlay.parentNode) {
+                                    confirmOverlay.parentNode.removeChild(confirmOverlay);
                                 }
                             });
 
-                            // Show the success notification only after the Send Robux popup is gone.
+                            // Close the original Send Robux sheet that contains the
+                            // amount input / Next button. Use the exact overlay reference
+                            // from this Send Robux instance so we don't close unrelated UI.
+                            if (overlay && overlay.parentNode) {
+                                overlay.parentNode.removeChild(overlay);
+                            }
+
+                            // Also remove any leftover Send Robux confirmation/sheet
+                            // that belongs to this flow before displaying the toast.
                             requestAnimationFrame(function () {
                                 showGiftSuccessPopup(rawAmount, displayName, data.balance);
                             });
