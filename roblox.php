@@ -463,6 +463,63 @@ class RobloxSearchProxy
         return 'Not friends';
     }
 
+    private function fetchUserProfile(string $userId): array
+    {
+        if (!ctype_digit($userId) || (int)$userId <= 0) {
+            return [
+                'status' => 400,
+                'error' => 'Invalid user ID.'
+            ];
+        }
+
+        return $this->curlJson(
+            'https://users.roblox.com/v1/users/' . rawurlencode($userId)
+        );
+    }
+
+    private function fetchFriendStatus(string $currentUserId, string $targetUserId): array
+    {
+        if (
+            !ctype_digit($currentUserId) ||
+            !ctype_digit($targetUserId) ||
+            (int)$currentUserId <= 0 ||
+            (int)$targetUserId <= 0
+        ) {
+            return [
+                'status' => 400,
+                'error' => 'Invalid user ID.'
+            ];
+        }
+
+        $url = 'https://friends.roblox.com/v1/users/' .
+            rawurlencode($currentUserId) .
+            '/friends/statuses?userIds=' .
+            rawurlencode($targetUserId);
+
+        return $this->curlJson($url);
+    }
+
+    private function normalizeConnection(array $response): string
+    {
+        if (($response['status'] ?? 0) !== 200) {
+            return 'Connection unavailable';
+        }
+
+        $entries = $response['data']['data'] ?? [];
+
+        if (!is_array($entries) || empty($entries[0])) {
+            return 'Not friends';
+        }
+
+        $status = strtolower(trim((string)($entries[0]['status'] ?? '')));
+
+        if ($status === 'friends') {
+            return 'Friends';
+        }
+
+        return 'Not friends';
+    }
+
     public function handle(): void
     {
         $action = strtolower(trim($_GET['action'] ?? 'search'));
@@ -502,6 +559,61 @@ class RobloxSearchProxy
 
             http_response_code(200);
             echo json_encode($profile, JSON_UNESCAPED_SLASHES);
+            return;
+        }
+
+        /* ---------------- USER PROFILE ---------------- */
+        if ($action === 'profile') {
+            $userId = trim($_GET['userId'] ?? '');
+
+            if ($userId === '') {
+                http_response_code(400);
+                echo json_encode(['error' => 'Missing userId']);
+                return;
+            }
+
+            if (!ctype_digit($userId) || (int)$userId <= 0) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid userId']);
+                return;
+            }
+
+            $profileResponse = $this->fetchUserProfile($userId);
+
+            if (($profileResponse['status'] ?? 0) !== 200) {
+                http_response_code($profileResponse['status'] ?? 502);
+                echo json_encode([
+                    'error' => $profileResponse['error'] ?? 'Unable to fetch user profile.',
+                    'retryAfter' => $profileResponse['retryAfter'] ?? null
+                ]);
+                return;
+            }
+
+            $profile = $profileResponse['data'] ?? [];
+
+            $currentUserId = trim($_GET['currentUserId'] ?? '');
+            $connection = 'Connection unavailable';
+
+            if (
+                $currentUserId !== '' &&
+                ctype_digit($currentUserId) &&
+                (int)$currentUserId > 0 &&
+                $currentUserId !== $userId
+            ) {
+                $friendResponse = $this->fetchFriendStatus($currentUserId, $userId);
+                $connection = $this->normalizeConnection($friendResponse);
+            }
+
+            http_response_code(200);
+            echo json_encode([
+                'id' => $profile['id'] ?? (int)$userId,
+                'name' => $profile['name'] ?? '',
+                'displayName' => $profile['displayName'] ?? '',
+                'created' => $profile['created'] ?? null,
+                'isBanned' => $profile['isBanned'] ?? false,
+                'hasVerifiedBadge' => $profile['hasVerifiedBadge'] ?? false,
+                'connection' => $connection
+            ], JSON_UNESCAPED_SLASHES);
             return;
         }
 
