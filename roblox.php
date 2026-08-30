@@ -21,25 +21,21 @@ class RobloxSearchProxy
 {
     private string $cacheDir = '/tmp/roblox_search_cache';
     private string $avatarCacheDir = '/tmp/roblox_avatar_cache';
-    private string $profileCacheDir = '/tmp/roblox_profile_cache';
     private string $rateLimitFile = '/tmp/roblox_rate_limits.json';
 
     private int $maxRequestsPerMinute = 20;
     private float $minRequestInterval = 0.75;
     private int $cacheTTL = 3600;
     private int $avatarCacheTTL = 86400;
-    private int $profileCacheTTL = 3600;
 
     public function __construct()
     {
-        foreach ([
-            $this->cacheDir,
-            $this->avatarCacheDir,
-            $this->profileCacheDir
-        ] as $dir) {
-            if (!is_dir($dir)) {
-                @mkdir($dir, 0755, true);
-            }
+        if (!is_dir($this->cacheDir)) {
+            @mkdir($this->cacheDir, 0755, true);
+        }
+
+        if (!is_dir($this->avatarCacheDir)) {
+            @mkdir($this->avatarCacheDir, 0755, true);
         }
     }
 
@@ -88,22 +84,18 @@ class RobloxSearchProxy
             return null;
         }
 
-        return isset($data['results']) && is_array($data['results'])
-            ? $data['results']
-            : null;
+        return $data['results'] ?? null;
     }
 
     private function saveToCache(string $keyword, int $limit, array $results): void
     {
-        @file_put_contents(
-            $this->getCacheFile($keyword, $limit),
-            json_encode([
-                'results' => $results,
-                'expires' => time() + $this->cacheTTL,
-                'cached' => time()
-            ], JSON_UNESCAPED_SLASHES),
-            LOCK_EX
-        );
+        $file = $this->getCacheFile($keyword, $limit);
+
+        @file_put_contents($file, json_encode([
+            'results' => $results,
+            'expires' => time() + $this->cacheTTL,
+            'cached' => time()
+        ], JSON_UNESCAPED_SLASHES), LOCK_EX);
     }
 
     private function checkRateLimit(): array
@@ -140,7 +132,6 @@ class RobloxSearchProxy
 
         if ($lastRequest > 0 && ($now - $lastRequest) < $this->minRequestInterval) {
             $retryAfter = $this->minRequestInterval - ($now - $lastRequest);
-
             return [
                 'allowed' => false,
                 'reason' => 'Please wait before searching again.',
@@ -166,13 +157,6 @@ class RobloxSearchProxy
 
     private function curlJson(string $url): array
     {
-        if (!function_exists('curl_init')) {
-            return [
-                'status' => 500,
-                'error' => 'PHP cURL extension is not enabled on this server.'
-            ];
-        }
-
         $ch = curl_init();
 
         curl_setopt_array($ch, [
@@ -184,12 +168,12 @@ class RobloxSearchProxy
             CURLOPT_HTTPGET => true,
             CURLOPT_HTTPHEADER => [
                 'Accept: application/json',
-                'User-Agent: dw321-roblox-search/1.1'
+                'User-Agent: dw321-roblox-search/1.0'
             ]
         ]);
 
         $body = curl_exec($ch);
-        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
 
@@ -255,19 +239,15 @@ class RobloxSearchProxy
             return null;
         }
 
-        return !empty($data['imageUrl']) ? (string)$data['imageUrl'] : null;
+        return !empty($data['imageUrl']) ? $data['imageUrl'] : null;
     }
 
     private function saveAvatarCache(string $userId, string $imageUrl): void
     {
-        @file_put_contents(
-            $this->getAvatarCacheFile($userId),
-            json_encode([
-                'imageUrl' => $imageUrl,
-                'expires' => time() + $this->avatarCacheTTL
-            ], JSON_UNESCAPED_SLASHES),
-            LOCK_EX
-        );
+        @file_put_contents($this->getAvatarCacheFile($userId), json_encode([
+            'imageUrl' => $imageUrl,
+            'expires' => time() + $this->avatarCacheTTL
+        ], JSON_UNESCAPED_SLASHES), LOCK_EX);
     }
 
     private function fetchAvatars(array $userIds): array
@@ -293,28 +273,29 @@ class RobloxSearchProxy
             ];
         }
 
-        // Smaller batches make the proxy more tolerant of partial thumbnail failures.
-        foreach (array_chunk($missing, 25) as $batch) {
-            $url = 'https://thumbnails.roblox.com/v1/users/avatar-headshot?' . http_build_query([
-                'userIds' => implode(',', $batch),
-                'size' => '150x150',
-                'format' => 'Png',
-                'isCircular' => 'false'
-            ]);
+        // Roblox's thumbnails endpoint accepts a batch of user IDs.
+        $url = 'https://thumbnails.roblox.com/v1/users/avatar-headshot?' . http_build_query([
+            'userIds' => implode(',', $missing),
+            'size' => '150x150',
+            'format' => 'Png',
+            'isCircular' => 'false'
+        ]);
 
-            $response = $this->curlJson($url);
+        $response = $this->curlJson($url);
 
-            if ($response['status'] !== 200) {
-                continue;
-            }
+        if ($response['status'] !== 200) {
+            return $response;
+        }
 
-            foreach (($response['data']['data'] ?? []) as $entry) {
-                if (!empty($entry['targetId']) && !empty($entry['imageUrl'])) {
-                    $id = (string)$entry['targetId'];
-                    $imageUrl = (string)$entry['imageUrl'];
-                    $result[$id] = $imageUrl;
-                    $this->saveAvatarCache($id, $imageUrl);
-                }
+        $entries = $response['data']['data'] ?? [];
+
+        foreach ($entries as $entry) {
+            if (!empty($entry['targetId']) && !empty($entry['imageUrl'])) {
+                $id = (string)$entry['targetId'];
+                $url = (string)$entry['imageUrl'];
+
+                $result[$id] = $url;
+                $this->saveAvatarCache($id, $url);
             }
         }
 
@@ -324,302 +305,13 @@ class RobloxSearchProxy
         ];
     }
 
-    private function getProfileCacheFile(string $userId): string
-    {
-        return $this->profileCacheDir . '/' . hash('sha256', $userId) . '.json';
-    }
-
-    private function getCachedProfile(string $userId): ?array
-    {
-        $file = $this->getProfileCacheFile($userId);
-
-        if (!is_file($file)) {
-            return null;
-        }
-
-        $raw = @file_get_contents($file);
-        $data = $raw !== false ? json_decode($raw, true) : null;
-
-        if (!is_array($data) || ($data['expires'] ?? 0) <= time()) {
-            @unlink($file);
-            return null;
-        }
-
-        return isset($data['profile']) && is_array($data['profile'])
-            ? $data['profile']
-            : null;
-    }
-
-    private function saveProfileCache(string $userId, array $profile): void
-    {
-        @file_put_contents(
-            $this->getProfileCacheFile($userId),
-            json_encode([
-                'profile' => $profile,
-                'expires' => time() + $this->profileCacheTTL
-            ], JSON_UNESCAPED_SLASHES),
-            LOCK_EX
-        );
-    }
-
-    private function fetchUserProfile(string $userId): array
-    {
-        if (!ctype_digit($userId) || (int)$userId <= 0) {
-            return [
-                'status' => 400,
-                'error' => 'Invalid user ID.'
-            ];
-        }
-
-        $cached = $this->getCachedProfile($userId);
-        if ($cached !== null) {
-            return [
-                'status' => 200,
-                'data' => $cached,
-                'cached' => true
-            ];
-        }
-
-        $url = 'https://users.roblox.com/v1/users/' . rawurlencode($userId);
-        $response = $this->curlJson($url);
-
-        if ($response['status'] !== 200) {
-            return $response;
-        }
-
-        $profile = $response['data'];
-
-        $normalized = [
-            'id' => $profile['id'] ?? (int)$userId,
-            'name' => $profile['name'] ?? '',
-            'displayName' => $profile['displayName'] ?? '',
-            'created' => $profile['created'] ?? null,
-            'isBanned' => (bool)($profile['isBanned'] ?? false),
-            'hasVerifiedBadge' => (bool)($profile['hasVerifiedBadge'] ?? false)
-        ];
-
-        $this->saveProfileCache($userId, $normalized);
-
-        return [
-            'status' => 200,
-            'data' => $normalized
-        ];
-    }
-
-    private function fetchFriendStatus(string $currentUserId, string $targetUserId): array
-    {
-        if (!ctype_digit($currentUserId) || (int)$currentUserId <= 0 ||
-            !ctype_digit($targetUserId) || (int)$targetUserId <= 0) {
-            return [
-                'status' => 400,
-                'error' => 'Invalid user ID.'
-            ];
-        }
-
-        $url = 'https://friends.roblox.com/v1/users/' . rawurlencode($currentUserId) .
-            '/friends/statuses?userIds=' . rawurlencode($targetUserId);
-
-        return $this->curlJson($url);
-    }
-
-    private function normalizeConnection(array $response, string $targetUserId): string
-    {
-        if ($response['status'] !== 200) {
-            return 'Connection unavailable';
-        }
-
-        $entries = $response['data']['data'] ?? [];
-
-        if (!is_array($entries)) {
-            return 'Connection unavailable';
-        }
-
-        foreach ($entries as $entry) {
-            if ((string)($entry['id'] ?? $entry['userId'] ?? $entry['targetId'] ?? '') !== $targetUserId) {
-                continue;
-            }
-
-            $status = strtolower(trim((string)($entry['status'] ?? '')));
-
-            if ($status === 'friends' || $status === 'friend') {
-                return 'Friends';
-            }
-
-            if ($status === 'pending') {
-                return 'Pending';
-            }
-
-            if ($status === 'following') {
-                return 'Following';
-            }
-
-            if ($status === 'notfriends' || $status === 'not friends' || $status === 'none') {
-                return 'Not friends';
-            }
-
-            return $entry['status'] ? ucfirst((string)$entry['status']) : 'Connection unavailable';
-        }
-
-        return 'Not friends';
-    }
-
-    private function fetchUserProfile(string $userId): array
-    {
-        if (!ctype_digit($userId) || (int)$userId <= 0) {
-            return [
-                'status' => 400,
-                'error' => 'Invalid user ID.'
-            ];
-        }
-
-        return $this->curlJson(
-            'https://users.roblox.com/v1/users/' . rawurlencode($userId)
-        );
-    }
-
-    private function fetchFriendStatus(string $currentUserId, string $targetUserId): array
-    {
-        if (
-            !ctype_digit($currentUserId) ||
-            !ctype_digit($targetUserId) ||
-            (int)$currentUserId <= 0 ||
-            (int)$targetUserId <= 0
-        ) {
-            return [
-                'status' => 400,
-                'error' => 'Invalid user ID.'
-            ];
-        }
-
-        $url = 'https://friends.roblox.com/v1/users/' .
-            rawurlencode($currentUserId) .
-            '/friends/statuses?userIds=' .
-            rawurlencode($targetUserId);
-
-        return $this->curlJson($url);
-    }
-
-    private function normalizeConnection(array $response): string
-    {
-        if (($response['status'] ?? 0) !== 200) {
-            return 'Connection unavailable';
-        }
-
-        $entries = $response['data']['data'] ?? [];
-
-        if (!is_array($entries) || empty($entries[0])) {
-            return 'Not friends';
-        }
-
-        $status = strtolower(trim((string)($entries[0]['status'] ?? '')));
-
-        if ($status === 'friends') {
-            return 'Friends';
-        }
-
-        return 'Not friends';
-    }
-
     public function handle(): void
     {
         $action = strtolower(trim($_GET['action'] ?? 'search'));
 
-        /* ---------------- USER PROFILE ---------------- */
-        if ($action === 'profile') {
-            $userId = trim((string)($_GET['userId'] ?? ''));
-
-            if ($userId === '') {
-                http_response_code(400);
-                echo json_encode(['error' => 'Missing userId']);
-                return;
-            }
-
-            $result = $this->fetchUserProfile($userId);
-
-            if ($result['status'] !== 200) {
-                http_response_code($result['status']);
-                echo json_encode([
-                    'error' => $result['error'] ?? 'Unable to fetch user profile.',
-                    'retryAfter' => $result['retryAfter'] ?? null
-                ]);
-                return;
-            }
-
-            $profile = $result['data'];
-
-            // Optional relationship lookup. A public site cannot know the visitor's
-            // Roblox identity unless you explicitly provide a current user ID.
-            $currentUserId = trim((string)($_GET['currentUserId'] ?? ''));
-            if ($currentUserId !== '' && $currentUserId !== $userId) {
-                $friendResponse = $this->fetchFriendStatus($currentUserId, $userId);
-                $profile['connection'] = $this->normalizeConnection($friendResponse, $userId);
-            } else {
-                $profile['connection'] = 'Connection unavailable';
-            }
-
-            http_response_code(200);
-            echo json_encode($profile, JSON_UNESCAPED_SLASHES);
-            return;
-        }
-
-        /* ---------------- USER PROFILE ---------------- */
-        if ($action === 'profile') {
-            $userId = trim($_GET['userId'] ?? '');
-
-            if ($userId === '') {
-                http_response_code(400);
-                echo json_encode(['error' => 'Missing userId']);
-                return;
-            }
-
-            if (!ctype_digit($userId) || (int)$userId <= 0) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid userId']);
-                return;
-            }
-
-            $profileResponse = $this->fetchUserProfile($userId);
-
-            if (($profileResponse['status'] ?? 0) !== 200) {
-                http_response_code($profileResponse['status'] ?? 502);
-                echo json_encode([
-                    'error' => $profileResponse['error'] ?? 'Unable to fetch user profile.',
-                    'retryAfter' => $profileResponse['retryAfter'] ?? null
-                ]);
-                return;
-            }
-
-            $profile = $profileResponse['data'] ?? [];
-
-            $currentUserId = trim($_GET['currentUserId'] ?? '');
-            $connection = 'Connection unavailable';
-
-            if (
-                $currentUserId !== '' &&
-                ctype_digit($currentUserId) &&
-                (int)$currentUserId > 0 &&
-                $currentUserId !== $userId
-            ) {
-                $friendResponse = $this->fetchFriendStatus($currentUserId, $userId);
-                $connection = $this->normalizeConnection($friendResponse);
-            }
-
-            http_response_code(200);
-            echo json_encode([
-                'id' => $profile['id'] ?? (int)$userId,
-                'name' => $profile['name'] ?? '',
-                'displayName' => $profile['displayName'] ?? '',
-                'created' => $profile['created'] ?? null,
-                'isBanned' => $profile['isBanned'] ?? false,
-                'hasVerifiedBadge' => $profile['hasVerifiedBadge'] ?? false,
-                'connection' => $connection
-            ], JSON_UNESCAPED_SLASHES);
-            return;
-        }
-
         /* ---------------- AVATARS ---------------- */
         if ($action === 'avatars') {
-            $rawIds = trim((string)($_GET['userIds'] ?? ''));
+            $rawIds = trim($_GET['userIds'] ?? '');
 
             if ($rawIds === '') {
                 http_response_code(400);
@@ -627,13 +319,14 @@ class RobloxSearchProxy
                 return;
             }
 
-            $ids = array_values(array_unique(array_filter(
-                array_map('trim', explode(',', $rawIds)),
-                function ($id) {
-                    return ctype_digit($id) && (int)$id > 0;
-                }
-            )));
+            $ids = array_values(array_unique(array_filter(array_map(
+                'trim',
+                explode(',', $rawIds)
+            ), function ($id) {
+                return ctype_digit($id) && (int)$id > 0;
+            })));
 
+            // The HTML only needs the search results, so cap this at 100 IDs.
             $ids = array_slice($ids, 0, 100);
 
             if (!$ids) {
@@ -662,7 +355,7 @@ class RobloxSearchProxy
         }
 
         /* ---------------- USER SEARCH ---------------- */
-        $keyword = trim((string)($_GET['keyword'] ?? ''));
+        $keyword = trim($_GET['keyword'] ?? '');
         $limit = (int)($_GET['limit'] ?? 10);
 
         if ($keyword === '') {
