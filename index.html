@@ -3316,6 +3316,33 @@
                     ".send-robux-success-title{font-size:22px;line-height:27px;font-weight:700;color:#202227;margin-bottom:5px}" +
                     ".send-robux-success-text{font-size:14px;line-height:20px;color:#6b6f76}" +
                     "@keyframes sendRobuxSuccessIn{from{opacity:0;transform:scale(.94) translateY(5px)}to{opacity:1;transform:scale(1) translateY(0)}}" +
+                    ".send-robux-confirm-overlay{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);opacity:1;transition:opacity .16s ease}" +
+                    ".send-robux-confirm-overlay.closing{opacity:0}" +
+                    ".send-robux-confirm-popup{width:min(372px,calc(100vw - 28px));height:430px;box-sizing:border-box;border-radius:14px;background:#fff;color:#202227;overflow:hidden;font-family:'Builder Sans','Helvetica Neue',Helvetica,Arial,sans-serif;box-shadow:0 14px 34px rgba(0,0,0,.24);animation:sendRobuxConfirmIn .16s ease-out}" +
+                    ".send-robux-confirm-header{height:47px;padding:10px 12px 8px 15px;box-sizing:border-box;display:flex;align-items:center;gap:10px;background:#fff}" +
+                    ".send-robux-confirm-title{display:flex;align-items:center;gap:7px;flex:1;font-size:17px;font-weight:700;line-height:22px}" +
+                    ".send-robux-confirm-title .icon{width:19px;height:19px;display:inline-flex;flex:0 0 19px}" +
+                    ".send-robux-confirm-balance{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:700}" +
+                    ".send-robux-confirm-balance .icon{width:17px;height:17px;display:inline-flex}" +
+                    ".send-robux-confirm-close{width:27px;height:27px;border:0;background:transparent;font-size:25px;line-height:25px;font-weight:400;color:#202227;padding:0;cursor:pointer}" +
+                    ".send-robux-confirm-profile{height:202px;margin:0 14px 10px;padding:18px 12px 10px;box-sizing:border-box;border-radius:8px;background:#f1f2f4;text-align:center;display:flex;flex-direction:column;align-items:center}" +
+                    ".send-robux-confirm-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 7px;border:1px solid rgba(0,0,0,.08)}" +
+                    ".send-robux-confirm-name{font-size:15px;line-height:19px;font-weight:700;color:#202227}" +
+                    ".send-robux-confirm-username{font-size:13px;line-height:17px;color:#5f6368;margin-top:1px}" +
+                    ".send-robux-confirm-meta{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:17px;font-size:11px;line-height:15px;color:#4f545c}" +
+                    ".send-robux-confirm-connection,.send-robux-confirm-join{display:inline-flex;align-items:center;gap:4px}" +
+                    ".send-robux-confirm-connection:before{content:'●';font-size:8px}" +
+                    ".send-robux-confirm-join:before{content:'●';font-size:8px}" +
+                    ".send-robux-confirm-amount{height:66px;margin:0 14px 8px;border-radius:8px;background:#f1f2f4;display:flex;align-items:center;justify-content:center;gap:7px;font-size:32px;font-weight:700;line-height:38px}" +
+                    ".send-robux-confirm-amount .icon{width:29px;height:29px;display:inline-flex}" +
+                    ".send-robux-confirm-actions{display:flex;gap:7px;margin:0 14px 8px}" +
+                    ".send-robux-confirm-send,.send-robux-confirm-edit{height:34px;border:0;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;box-sizing:border-box}" +
+                    ".send-robux-confirm-send{flex:1;background:#3158e8;color:#fff}" +
+                    ".send-robux-confirm-send:disabled{opacity:.65;cursor:not-allowed}" +
+                    ".send-robux-confirm-edit{flex:1;background:#dfe1e7;color:#202227}" +
+                    ".send-robux-confirm-edit:disabled{opacity:.65;cursor:not-allowed}" +
+                    ".send-robux-confirm-note{margin:0 14px;font-size:9px;line-height:12px;color:#5f6368;text-align:left}" +
+                    "@keyframes sendRobuxConfirmIn{from{opacity:0;transform:scale(.97) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}" +
                     ".send-robux-footer{text-align:center;padding:0 20px 13px;font-size:11px;font-weight:500;color:#5f6368;background:#fff;margin-top:0}" +
                     ".send-robux-error{color:#c92828;font-size:12px;min-height:16px;margin-top:-9px;margin-bottom:7px}" +
                     ".send-robux-empty{padding:18px 20px;text-align:center;opacity:.65;font-size:14px;color:#202227}" +
@@ -3485,26 +3512,126 @@
                     }, 5500);
                 }
 
-                nextButton.addEventListener("click", async function () {
-                    var raw = getRawAmount();
-                    if (!raw || /^0+$/.test(raw) || nextButton.classList.contains("loading")) {
-                        return;
-                    }
+                function getCurrentUserId() {
+                    var meta = document.querySelector('meta[name="user-data"]');
+                    return meta ? String(meta.getAttribute("data-userid") || "").trim() : "";
+                }
 
-                    var recipient = selectedUsername ? selectedUsername.textContent.replace(/^@/, "").trim() : "";
-                    var displayName = selectedName ? selectedName.textContent.trim() : "";
-                    if (!recipient) {
-                        amountError.textContent = "Select a user first.";
-                        return;
-                    }
+                function formatJoinDate(value) {
+                    if (!value) return "Joined date unavailable";
+                    var date = new Date(value);
+                    if (isNaN(date.getTime())) return "Joined date unavailable";
+                    return "Joined " + date.toLocaleDateString(undefined, { year: "numeric", month: "long" });
+                }
 
-                    nextButton.classList.add("loading");
-                    nextButton.disabled = true;
-                    giftLabel.textContent = "Gifting...";
-                    amountError.textContent = "";
+                async function getRecipientProfileInfo(userId) {
+                    var result = { created: null, friend: null };
 
                     try {
-                        var response = await fetch(VISUAL_GIFT_API, {
+                        var profileResponse = await fetch("https://users.roblox.com/v1/users/" + encodeURIComponent(userId), {
+                            method: "GET",
+                            credentials: "omit",
+                            headers: { "Accept": "application/json" }
+                        });
+                        if (profileResponse.ok) {
+                            var profile = await profileResponse.json();
+                            result.created = profile.created || null;
+                        }
+                    } catch (_) {}
+
+                    var currentUserId = getCurrentUserId();
+                    if (currentUserId && currentUserId !== userId) {
+                        try {
+                            var friendResponse = await fetch(
+                                "https://friends.roblox.com/v1/users/" + encodeURIComponent(currentUserId) + "/friends/statuses?userIds=" + encodeURIComponent(userId),
+                                { method: "GET", credentials: "omit", headers: { "Accept": "application/json" } }
+                            );
+                            if (friendResponse.ok) {
+                                var friendData = await friendResponse.json();
+                                var status = friendData && friendData.data && friendData.data[0] ? friendData.data[0].status : "";
+                                result.friend = String(status).toLowerCase() === "friends";
+                            }
+                        } catch (_) {}
+                    }
+
+                    return result;
+                }
+
+                function closeConfirmPopup(popupOverlay) {
+                    if (popupOverlay && popupOverlay.parentNode) {
+                        popupOverlay.classList.add("closing");
+                        setTimeout(function () {
+                            if (popupOverlay.parentNode) popupOverlay.parentNode.removeChild(popupOverlay);
+                        }, 160);
+                    }
+                }
+
+                function showSendConfirmPopup(rawAmount, user) {
+                    var amount = formatRobuxAmount(rawAmount);
+                    var popupOverlay = document.createElement("div");
+                    popupOverlay.className = "send-robux-confirm-overlay";
+                    popupOverlay.innerHTML =
+                        "<div class=\"send-robux-confirm-popup\" role=\"dialog\" aria-modal=\"true\">" +
+                            "<div class=\"send-robux-confirm-header\">" +
+                                "<div class=\"send-robux-confirm-title\"><span class=\"icon icon-regular-roblox-plus size-small\"></span><span>Send Robux</span></div>" +
+                                "<div class=\"send-robux-confirm-balance\"><span class=\"icon icon-regular-robux size-small\"></span><span class=\"send-robux-confirm-balance-value\"></span></div>" +
+                                "<button type=\"button\" class=\"send-robux-confirm-close\" aria-label=\"Close\">×</button>" +
+                            "</div>" +
+                            "<div class=\"send-robux-confirm-profile\">" +
+                                "<img class=\"send-robux-confirm-avatar\" alt=\"\">" +
+                                "<div class=\"send-robux-confirm-name\"></div>" +
+                                "<div class=\"send-robux-confirm-username\"></div>" +
+                                "<div class=\"send-robux-confirm-meta\"><span class=\"send-robux-confirm-connection\">Connection unavailable</span><span class=\"send-robux-confirm-join\">Joined date unavailable</span></div>" +
+                            "</div>" +
+                            "<div class=\"send-robux-confirm-amount\"><span class=\"icon icon-regular-robux size-large\"></span><span>" + escapeHtml(amount) + "</span></div>" +
+                            "<div class=\"send-robux-confirm-actions\"><button type=\"button\" class=\"send-robux-confirm-send\">Send</button><button type=\"button\" class=\"send-robux-confirm-edit\">Edit</button></div>" +
+                            "<div class=\"send-robux-confirm-note\">You need an age check or parental consent to send Robux. Once you send, you cannot cancel.</div>" +
+                        "</div>";
+
+                    document.body.appendChild(popupOverlay);
+
+                    var avatar = popupOverlay.querySelector(".send-robux-confirm-avatar");
+                    var name = popupOverlay.querySelector(".send-robux-confirm-name");
+                    var username = popupOverlay.querySelector(".send-robux-confirm-username");
+                    var connection = popupOverlay.querySelector(".send-robux-confirm-connection");
+                    var join = popupOverlay.querySelector(".send-robux-confirm-join");
+                    var send = popupOverlay.querySelector(".send-robux-confirm-send");
+                    var edit = popupOverlay.querySelector(".send-robux-confirm-edit");
+                    var close = popupOverlay.querySelector(".send-robux-confirm-close");
+
+                    var cachedAvatar = avatarCache.get(String(user.id));
+                    avatar.src = cachedAvatar || getAvatarFallbackUrl();
+                    avatar.onerror = function () { addAvatarFallback(avatar); };
+                    name.textContent = user.displayName || user.name || "";
+                    username.textContent = "@" + (user.name || "");
+
+                    var balanceNode = popupOverlay.querySelector(".send-robux-confirm-balance-value");
+                    var balanceText = document.getElementById("nav-robux-amount");
+                    balanceNode.textContent = balanceText ? balanceText.textContent.trim() : "0";
+
+                    getRecipientProfileInfo(String(user.id)).then(function (info) {
+                        join.textContent = formatJoinDate(info.created);
+                        if (info.friend === true) {
+                            connection.textContent = "Friends";
+                        } else if (info.friend === false) {
+                            connection.textContent = "Not friends";
+                        } else {
+                            connection.textContent = "Connection unavailable";
+                        }
+                    });
+
+                    function doGift() {
+                        send.disabled = true;
+                        edit.disabled = true;
+                        send.textContent = "Sending...";
+                        nextButton.classList.add("loading");
+                        nextButton.disabled = true;
+                        giftLabel.textContent = "Sending...";
+
+                        var recipient = user.name || "";
+                        var displayName = user.displayName || user.name || "";
+
+                        fetch(VISUAL_GIFT_API, {
                             method: "POST",
                             credentials: "omit",
                             headers: {
@@ -3513,32 +3640,62 @@
                             },
                             body: JSON.stringify({
                                 client: getVisualClientId(),
-                                amount: raw,
+                                amount: rawAmount,
                                 recipient: recipient
                             })
+                        }).then(async function (response) {
+                            var data = {};
+                            try { data = await response.json(); } catch (_) {}
+                            if (!response.ok || !data.success) {
+                                throw new Error(data.error || "Unable to complete the visual gift.");
+                            }
+                            await new Promise(function (resolve) { setTimeout(resolve, 900); });
+                            localStorage.setItem("robuxBalance", String(data.balance));
+                            updateVisibleBalance(data.balance);
+                            closeConfirmPopup(popupOverlay);
+                            showGiftSuccessPopup(rawAmount, displayName, data.balance);
+                        }).catch(function (error) {
+                            console.error("Visual gift failed:", error);
+                            send.disabled = false;
+                            edit.disabled = false;
+                            send.textContent = "Send";
+                            nextButton.classList.remove("loading");
+                            nextButton.disabled = false;
+                            giftLabel.textContent = "Next";
+                            amountError.textContent = error && error.message ? error.message : "Unable to complete the gift.";
+                            updateAmountState();
                         });
-
-                        var data = {};
-                        try { data = await response.json(); } catch (_) {}
-
-                        if (!response.ok || !data.success) {
-                            throw new Error(data.error || "Unable to complete the visual gift.");
-                        }
-
-                        // Keep the loading state visible a little longer so the action feels deliberate.
-                        await new Promise(function (resolve) { setTimeout(resolve, 1800); });
-
-                        localStorage.setItem("robuxBalance", String(data.balance));
-                        updateVisibleBalance(data.balance);
-                        showGiftSuccessPopup(raw, displayName, data.balance);
-                    } catch (error) {
-                        console.error("Visual gift failed:", error);
-                        amountError.textContent = error && error.message ? error.message : "Unable to complete the gift.";
-                        nextButton.disabled = false;
-                        nextButton.classList.remove("loading");
-                        giftLabel.textContent = "Gift";
-                        updateAmountState();
                     }
+
+                    send.addEventListener("click", doGift);
+                    edit.addEventListener("click", function () { closeConfirmPopup(popupOverlay); });
+                    close.addEventListener("click", function () { closeConfirmPopup(popupOverlay); });
+                    popupOverlay.addEventListener("click", function (event) {
+                        if (event.target === popupOverlay) closeConfirmPopup(popupOverlay);
+                    });
+                }
+
+                nextButton.addEventListener("click", function () {
+                    var raw = getRawAmount();
+                    if (!raw || /^0+$/.test(raw) || nextButton.classList.contains("loading")) {
+                        return;
+                    }
+
+                    var userId = selectedAvatar ? selectedAvatar.dataset.userId : "";
+                    var recipient = selectedUsername ? selectedUsername.textContent.replace(/^@/, "").trim() : "";
+                    if (!userId || !recipient) {
+                        amountError.textContent = "Select a user first.";
+                        return;
+                    }
+
+                    var user = {
+                        id: userId,
+                        name: recipient,
+                        displayName: selectedName ? selectedName.textContent.trim() : recipient
+                    };
+
+                    amountError.textContent = "";
+                    showSendConfirmPopup(raw, user);
                 });
                 adjustAmountInputWidth();
 
