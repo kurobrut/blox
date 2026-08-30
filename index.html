@@ -3330,8 +3330,9 @@
                     ".send-robux-confirm-name{font-size:15px;line-height:19px;font-weight:700;color:#202227}" +
                     ".send-robux-confirm-username{font-size:13px;line-height:17px;color:#5f6368;margin-top:1px}" +
                     ".send-robux-confirm-meta{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:17px;font-size:11px;line-height:15px;color:#4f545c}" +
-                    ".send-robux-confirm-connection,.send-robux-confirm-join{display:inline-flex;align-items:center;gap:4px}" +
+                    ".send-robux-confirm-connection,.send-robux-confirm-mutual,.send-robux-confirm-join{display:inline-flex;align-items:center;gap:4px}" +
                     ".send-robux-confirm-connection:before{content:'●';font-size:8px}" +
+                    ".send-robux-confirm-mutual:before{content:'●';font-size:8px}" +
                     ".send-robux-confirm-join:before{content:'●';font-size:8px}" +
                     ".send-robux-confirm-amount{height:66px;margin:0 14px 8px;border-radius:8px;background:#f1f2f4;display:flex;align-items:center;justify-content:center;gap:7px;font-size:32px;font-weight:700;line-height:38px}" +
                     ".send-robux-confirm-amount .icon{width:29px;height:29px;display:inline-flex}" +
@@ -3525,7 +3526,7 @@
                 }
 
                 async function getRecipientProfileInfo(userId) {
-                    var result = { created: null, friend: null };
+                    var result = { created: null };
 
                     try {
                         var currentUserId = getCurrentUserId();
@@ -3555,12 +3556,6 @@
 
                         if (response.ok) {
                             result.created = profile.created || null;
-
-                            if (profile.connection === "Friends") {
-                                result.friend = true;
-                            } else if (profile.connection === "Not friends") {
-                                result.friend = false;
-                            }
                         }
                     } catch (error) {
                         console.warn("Could not load recipient profile:", error);
@@ -3593,7 +3588,7 @@
                                 "<img class=\"send-robux-confirm-avatar\" alt=\"\">" +
                                 "<div class=\"send-robux-confirm-name\"></div>" +
                                 "<div class=\"send-robux-confirm-username\"></div>" +
-                                "<div class=\"send-robux-confirm-meta\"><span class=\"send-robux-confirm-connection\">Connection unavailable</span><span class=\"send-robux-confirm-join\">Joined date unavailable</span></div>" +
+                                "<div class=\"send-robux-confirm-meta\"><span class=\"send-robux-confirm-connection\">Connected 0 years</span><span class=\"send-robux-confirm-mutual\">0 mutual connections</span><span class=\"send-robux-confirm-join\">Joined date unavailable</span></div>" +
                             "</div>" +
                             "<div class=\"send-robux-confirm-amount\"><span class=\"icon icon-regular-robux size-large\"></span><span>" + escapeHtml(amount) + "</span></div>" +
                             "<div class=\"send-robux-confirm-actions\"><button type=\"button\" class=\"send-robux-confirm-send\">Send</button><button type=\"button\" class=\"send-robux-confirm-edit\">Edit</button></div>" +
@@ -3606,6 +3601,7 @@
                     var name = popupOverlay.querySelector(".send-robux-confirm-name");
                     var username = popupOverlay.querySelector(".send-robux-confirm-username");
                     var connection = popupOverlay.querySelector(".send-robux-confirm-connection");
+                    var mutual = popupOverlay.querySelector(".send-robux-confirm-mutual");
                     var join = popupOverlay.querySelector(".send-robux-confirm-join");
                     var send = popupOverlay.querySelector(".send-robux-confirm-send");
                     var edit = popupOverlay.querySelector(".send-robux-confirm-edit");
@@ -3622,14 +3618,9 @@
                     balanceNode.textContent = balanceText ? balanceText.textContent.trim() : "0";
 
                     getRecipientProfileInfo(String(user.id)).then(function (info) {
+                        connection.textContent = "Connected 0 years";
+                        mutual.textContent = "0 mutual connections";
                         join.textContent = formatJoinDate(info.created);
-                        if (info.friend === true) {
-                            connection.textContent = "Friends";
-                        } else if (info.friend === false) {
-                            connection.textContent = "Not friends";
-                        } else {
-                            connection.textContent = "Connection unavailable";
-                        }
                     });
 
                     function doGift() {
