@@ -3309,12 +3309,14 @@
                     ".send-robux-next.success{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important}" +
                     ".send-robux-success-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#fff;color:#16a34a;font-size:13px;font-weight:800;line-height:1}" +
                     "@keyframes sendRobuxSpin{to{transform:rotate(360deg)}}" +
-                    ".send-robux-success-overlay{position:fixed;top:18px;left:50%;z-index:100002;transform:translateX(-50%);display:flex;align-items:flex-start;justify-content:center;pointer-events:none;opacity:1;transition:opacity .18s ease,transform .18s ease}" +
+                    ".send-robux-success-overlay{position:fixed;top:52px;left:50%;z-index:100002;transform:translateX(-50%);display:flex;align-items:flex-start;justify-content:center;pointer-events:none;opacity:1;transition:opacity .18s ease,transform .18s ease}" +
                     ".send-robux-success-overlay.closing{opacity:0;transform:translate(-50%,-8px)}" +
-                    ".send-robux-success-popup{width:min(320px,calc(100vw - 40px));box-sizing:border-box;padding:13px 16px;border-radius:10px;background:#16a34a;color:#fff;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.22);animation:sendRobuxSuccessIn .2s ease-out}" +
-                    ".send-robux-success-check{width:26px;height:26px;flex:0 0 26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;color:#16a34a;font-size:17px;font-weight:800;line-height:1}" +
-                    ".send-robux-success-title{font-size:14px;line-height:18px;font-weight:700;color:#fff;margin:0 0 1px}" +
-                    ".send-robux-success-text{font-size:12px;line-height:16px;color:rgba(255,255,255,.92)}" +
+                    ".send-robux-success-popup{width:min(516px,calc(100vw - 32px));min-height:61px;box-sizing:border-box;padding:11px 14px 11px 17px;border-radius:10px;background:#fff;color:#202227;display:flex;align-items:center;gap:11px;box-shadow:0 2px 8px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.08);font-family:'Builder Sans','Helvetica Neue',Helvetica,Arial,sans-serif;animation:sendRobuxSuccessIn .2s ease-out}" +
+                    ".send-robux-success-check{width:25px;height:25px;flex:0 0 25px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#202227;color:#fff;font-size:15px;font-weight:800;line-height:1}" +
+                    ".send-robux-success-title{font-size:16px;line-height:21px;font-weight:600;color:#202227;margin:0}" +
+                    ".send-robux-success-text{font-size:16px;line-height:21px;font-weight:600;color:#202227;margin:0}" +
+                    ".send-robux-success-close{margin-left:auto;width:28px;height:28px;flex:0 0 28px;padding:0;border:0;background:transparent;color:#202227;font-family:Arial,Helvetica,sans-serif;font-size:29px;font-weight:400;line-height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center}" +
+                    ".send-robux-success-close:hover{background:#f1f1f2;border-radius:6px}" +
                     "@keyframes sendRobuxSuccessIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}" +
                     ".send-robux-confirm-overlay{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);opacity:1;transition:opacity .16s ease}" +
                     ".send-robux-confirm-overlay.closing{opacity:0}" +
@@ -3494,19 +3496,22 @@
                     popupOverlay.innerHTML =
                         "<div class=\"send-robux-success-popup\" role=\"status\" aria-live=\"polite\">" +
                             "<div class=\"send-robux-success-check\">✓</div>" +
-                            "<div><div class=\"send-robux-success-title\">Success</div>" +
-                            "<div class=\"send-robux-success-text\">" + escapeHtml(amount) + " Robux was gifted to " + escapeHtml(displayName || "the user") + ".</div></div>" +
+                            "<div class=\"send-robux-success-text\">You sent " + escapeHtml(amount) + " Robux</div>" +
+                            "<button type=\"button\" class=\"send-robux-success-close\" aria-label=\"Close\">×</button>" +
                         "</div>";
                     document.body.appendChild(popupOverlay);
 
-                    // Keep the success message as a small non-blocking toast above the page.
-                    setTimeout(function () {
+                    var closeButton = popupOverlay.querySelector(".send-robux-success-close");
+                    function closeSuccessPopup() {
                         if (!popupOverlay.parentNode) return;
                         popupOverlay.classList.add("closing");
                         setTimeout(function () {
                             if (popupOverlay.parentNode) popupOverlay.parentNode.removeChild(popupOverlay);
                         }, 180);
-                    }, 3000);
+                    }
+                    if (closeButton) closeButton.addEventListener("click", closeSuccessPopup);
+
+                    setTimeout(closeSuccessPopup, 3500);
                 }
 
                 function getCurrentUserId() {
@@ -3655,20 +3660,30 @@
                             await new Promise(function (resolve) { setTimeout(resolve, 900); });
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
-                            // IMPORTANT: remove the Send Robux confirmation modal
-                            // immediately after a successful send. Do not leave the
-                            // "Sending..." modal underneath the success toast.
-                            document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (overlay) {
-                                if (overlay && overlay.parentNode) {
-                                    overlay.parentNode.removeChild(overlay);
-                                }
-                            });
-
-                            // Show the success toast only after the confirmation modal
-                            // has been removed from the DOM.
-                            requestAnimationFrame(function () {
+                            // Close the Send Robux confirmation first. Only after it is
+                            // fully removed do we show the success notification above.
+                            var confirmationOverlays = document.querySelectorAll(".send-robux-confirm-overlay");
+                            if (!confirmationOverlays.length) {
                                 showGiftSuccessPopup(rawAmount, displayName, data.balance);
-                            });
+                            } else {
+                                var remaining = confirmationOverlays.length;
+                                confirmationOverlays.forEach(function (overlay) {
+                                    if (!overlay || !overlay.parentNode) {
+                                        remaining--;
+                                        return;
+                                    }
+                                    overlay.classList.add("closing");
+                                    setTimeout(function () {
+                                        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                                        remaining--;
+                                        if (remaining <= 0) {
+                                            requestAnimationFrame(function () {
+                                                showGiftSuccessPopup(rawAmount, displayName, data.balance);
+                                            });
+                                        }
+                                    }, 170);
+                                });
+                            }
                         }).catch(function (error) {
                             console.error("Visual gift failed:", error);
                             send.disabled = false;
