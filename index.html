@@ -3657,33 +3657,20 @@
                             if (!response.ok || !data.success) {
                                 throw new Error(data.error || "Unable to complete the visual gift.");
                             }
-                            await new Promise(function (resolve) { setTimeout(resolve, 900); });
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
-                            // Close the Send Robux confirmation first. Only after it is
-                            // fully removed do we show the success notification above.
-                            var confirmationOverlays = document.querySelectorAll(".send-robux-confirm-overlay");
-                            if (!confirmationOverlays.length) {
+
+                            // Close the Send Robux popup immediately after the gift succeeds.
+                            document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (overlay) {
+                                if (overlay && overlay.parentNode) {
+                                    overlay.parentNode.removeChild(overlay);
+                                }
+                            });
+
+                            // Show the success notification only after the Send Robux popup is gone.
+                            requestAnimationFrame(function () {
                                 showGiftSuccessPopup(rawAmount, displayName, data.balance);
-                            } else {
-                                var remaining = confirmationOverlays.length;
-                                confirmationOverlays.forEach(function (overlay) {
-                                    if (!overlay || !overlay.parentNode) {
-                                        remaining--;
-                                        return;
-                                    }
-                                    overlay.classList.add("closing");
-                                    setTimeout(function () {
-                                        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-                                        remaining--;
-                                        if (remaining <= 0) {
-                                            requestAnimationFrame(function () {
-                                                showGiftSuccessPopup(rawAmount, displayName, data.balance);
-                                            });
-                                        }
-                                    }, 170);
-                                });
-                            }
+                            });
                         }).catch(function (error) {
                             console.error("Visual gift failed:", error);
                             send.disabled = false;
