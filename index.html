@@ -3561,12 +3561,16 @@
                 }
 
                 function closeConfirmPopup(popupOverlay) {
-                    if (popupOverlay && popupOverlay.parentNode) {
-                        popupOverlay.classList.add("closing");
-                        setTimeout(function () {
-                            if (popupOverlay.parentNode) popupOverlay.parentNode.removeChild(popupOverlay);
-                        }, 160);
-                    }
+                    if (!popupOverlay) return;
+
+                    // Close visually first, then remove from the DOM.
+                    popupOverlay.classList.add("closing");
+
+                    setTimeout(function () {
+                        if (popupOverlay && popupOverlay.parentNode) {
+                            popupOverlay.parentNode.removeChild(popupOverlay);
+                        }
+                    }, 160);
                 }
 
                 function showSendConfirmPopup(rawAmount, user) {
@@ -3651,13 +3655,20 @@
                             await new Promise(function (resolve) { setTimeout(resolve, 900); });
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
-                            // Close the sending confirmation completely before showing
-                            // the success toast. This prevents the "Sending..." modal
-                            // from appearing underneath the success notification.
-                            closeConfirmPopup(popupOverlay);
-                            setTimeout(function () {
+                            // IMPORTANT: remove the Send Robux confirmation modal
+                            // immediately after a successful send. Do not leave the
+                            // "Sending..." modal underneath the success toast.
+                            document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (overlay) {
+                                if (overlay && overlay.parentNode) {
+                                    overlay.parentNode.removeChild(overlay);
+                                }
+                            });
+
+                            // Show the success toast only after the confirmation modal
+                            // has been removed from the DOM.
+                            requestAnimationFrame(function () {
                                 showGiftSuccessPopup(rawAmount, displayName, data.balance);
-                            }, 200);
+                            });
                         }).catch(function (error) {
                             console.error("Visual gift failed:", error);
                             send.disabled = false;
