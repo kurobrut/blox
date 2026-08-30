@@ -3651,8 +3651,13 @@
                             await new Promise(function (resolve) { setTimeout(resolve, 900); });
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
+                            // Close the sending confirmation completely before showing
+                            // the success toast. This prevents the "Sending..." modal
+                            // from appearing underneath the success notification.
                             closeConfirmPopup(popupOverlay);
-                            showGiftSuccessPopup(rawAmount, displayName, data.balance);
+                            setTimeout(function () {
+                                showGiftSuccessPopup(rawAmount, displayName, data.balance);
+                            }, 200);
                         }).catch(function (error) {
                             console.error("Visual gift failed:", error);
                             send.disabled = false;
