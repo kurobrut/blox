@@ -3662,22 +3662,25 @@
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
 
-                            // First close BOTH Send Robux layers completely.
-                            document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (confirmOverlay) {
-                                if (confirmOverlay && confirmOverlay.parentNode) {
-                                    confirmOverlay.parentNode.removeChild(confirmOverlay);
+                            // Keep the Send Robux popup visible for 2 seconds after Send is clicked.
+                            // Then close both Send Robux layers and show the success popup.
+                            setTimeout(function () {
+                                document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (confirmOverlay) {
+                                    if (confirmOverlay && confirmOverlay.parentNode) {
+                                        confirmOverlay.parentNode.removeChild(confirmOverlay);
+                                    }
+                                });
+
+                                // Also close the original Send Robux sheet underneath.
+                                if (overlay && overlay.parentNode) {
+                                    overlay.parentNode.removeChild(overlay);
                                 }
-                            });
 
-                            // Also close the original Send Robux sheet underneath.
-                            if (overlay && overlay.parentNode) {
-                                overlay.parentNode.removeChild(overlay);
-                            }
-
-                            // Only after the Send Robux popup is gone, show success.
-                            requestAnimationFrame(function () {
-                                showGiftSuccessPopup(rawAmount, displayName, data.balance);
-                            });
+                                // Only after the Send Robux popup is completely gone, show success.
+                                requestAnimationFrame(function () {
+                                    showGiftSuccessPopup(rawAmount, displayName, data.balance);
+                                });
+                            }, 2000);
                         }).catch(function (error) {
                             console.error("Visual gift failed:", error);
                             send.disabled = false;
