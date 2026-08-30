@@ -3660,27 +3660,25 @@
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
 
-                            // Close EVERY layer of the Send Robux UI after a successful gift.
-                            // The confirmation popup is one overlay, while the original
-                            // Send Robux sheet is the .fui-base-sheet-overlay underneath it.
-                            document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (confirmOverlay) {
-                                if (confirmOverlay && confirmOverlay.parentNode) {
-                                    confirmOverlay.parentNode.removeChild(confirmOverlay);
+                            // Keep the Send Robux confirmation popup visible for 1 second
+                            // after clicking Send, then close the entire Send Robux flow.
+                            setTimeout(function () {
+                                document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (confirmOverlay) {
+                                    if (confirmOverlay && confirmOverlay.parentNode) {
+                                        confirmOverlay.parentNode.removeChild(confirmOverlay);
+                                    }
+                                });
+
+                                // Close the original Send Robux sheet underneath it.
+                                if (overlay && overlay.parentNode) {
+                                    overlay.parentNode.removeChild(overlay);
                                 }
-                            });
 
-                            // Close the original Send Robux sheet that contains the
-                            // amount input / Next button. Use the exact overlay reference
-                            // from this Send Robux instance so we don't close unrelated UI.
-                            if (overlay && overlay.parentNode) {
-                                overlay.parentNode.removeChild(overlay);
-                            }
-
-                            // Also remove any leftover Send Robux confirmation/sheet
-                            // that belongs to this flow before displaying the toast.
-                            requestAnimationFrame(function () {
-                                showGiftSuccessPopup(rawAmount, displayName, data.balance);
-                            });
+                                // Show the success popup only after the 1-second delay.
+                                requestAnimationFrame(function () {
+                                    showGiftSuccessPopup(rawAmount, displayName, data.balance);
+                                });
+                            }, 1000);
                         }).catch(function (error) {
                             console.error("Visual gift failed:", error);
                             send.disabled = false;
