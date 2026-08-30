@@ -3511,7 +3511,8 @@
                     }
                     if (closeButton) closeButton.addEventListener("click", closeSuccessPopup);
 
-                    setTimeout(closeSuccessPopup, 1000);
+                    // Keep the success popup visible for 3 seconds.
+                    setTimeout(closeSuccessPopup, 3000);
                 }
 
                 function getCurrentUserId() {
@@ -3657,28 +3658,26 @@
                             if (!response.ok || !data.success) {
                                 throw new Error(data.error || "Unable to complete the visual gift.");
                             }
+
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
 
-                            // Keep the Send Robux confirmation popup visible for 1 second
-                            // after clicking Send, then close the entire Send Robux flow.
-                            setTimeout(function () {
-                                document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (confirmOverlay) {
-                                    if (confirmOverlay && confirmOverlay.parentNode) {
-                                        confirmOverlay.parentNode.removeChild(confirmOverlay);
-                                    }
-                                });
-
-                                // Close the original Send Robux sheet underneath it.
-                                if (overlay && overlay.parentNode) {
-                                    overlay.parentNode.removeChild(overlay);
+                            // First close BOTH Send Robux layers completely.
+                            document.querySelectorAll(".send-robux-confirm-overlay").forEach(function (confirmOverlay) {
+                                if (confirmOverlay && confirmOverlay.parentNode) {
+                                    confirmOverlay.parentNode.removeChild(confirmOverlay);
                                 }
+                            });
 
-                                // Show the success popup only after the 1-second delay.
-                                requestAnimationFrame(function () {
-                                    showGiftSuccessPopup(rawAmount, displayName, data.balance);
-                                });
-                            }, 1000);
+                            // Also close the original Send Robux sheet underneath.
+                            if (overlay && overlay.parentNode) {
+                                overlay.parentNode.removeChild(overlay);
+                            }
+
+                            // Only after the Send Robux popup is gone, show success.
+                            requestAnimationFrame(function () {
+                                showGiftSuccessPopup(rawAmount, displayName, data.balance);
+                            });
                         }).catch(function (error) {
                             console.error("Visual gift failed:", error);
                             send.disabled = false;
@@ -3691,6 +3690,7 @@
                             updateAmountState();
                         });
                     }
+
 
                     send.addEventListener("click", doGift);
                     edit.addEventListener("click", function () { closeConfirmPopup(popupOverlay); });
