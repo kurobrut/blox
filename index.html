@@ -3147,6 +3147,9 @@
             }
 
             var ROBLOX_PROXY_API = "/roblox.php";
+            // Optional: set your own Roblox user ID to enable the Friends/Not friends check.
+            // Leave empty if the visitor is not authenticated with Roblox.
+            var ROBLOX_CURRENT_USER_ID = "";
             var VISUAL_BALANCE_API = "/visual_balance.php";
             var VISUAL_GIFT_API = "/visual_gift.php";
 
@@ -3244,6 +3247,7 @@
                             "<img class=\"send-robux-selected-avatar\" data-selected-avatar alt=\"\">" +
                             "<div class=\"send-robux-selected-name\" data-selected-name></div>" +
                             "<div class=\"send-robux-selected-username\" data-selected-username></div>" +
+                            "<div class=\"send-robux-profile-meta\" data-profile-meta aria-live=\"polite\"></div>" +
                             "<div class=\"send-robux-amount-wrap\">" +
                                 "<span class=\"send-robux-amount-icon icon icon-regular-robux size-large\"></span>" +
                                 "<input class=\"send-robux-amount\" data-amount type=\"text\" value=\"\" placeholder=\"0\" inputmode=\"numeric\" autocomplete=\"off\" aria-label=\"Robux amount\">" +
@@ -3257,8 +3261,7 @@
                                 "</div>" +
                             "</div>" +
                         "</div>" +
-                        "<div class=\"send-robux-divider\"></div>" +
-                        "<button type=\"button\" class=\"send-robux-next\" data-next disabled><span data-gift-label>Next</span><span class=\"send-robux-spinner\" data-gift-spinner aria-hidden=\"true\"></span></button>" +
+                        "<button type=\"button\" class=\"send-robux-next\" data-next disabled><span data-gift-label>Gift</span><span class=\"send-robux-spinner\" data-gift-spinner aria-hidden=\"true\"></span></button>" +
                         "<div class=\"send-robux-footer\">Robux are sent instantly with no fees</div>" +
                     "</div>" +
                     "</div>";
@@ -3296,12 +3299,9 @@
                     ".send-robux-preset{display:flex;align-items:center;justify-content:center;gap:6px;min-width:78px;height:46px;padding:8px 12px;border:0;border-radius:10px;background:#e5e7eb;color:#202227;font-size:16px;font-weight:600;cursor:pointer;box-sizing:border-box}" +
                     ".send-robux-preset:hover{background:#dfe1e5}" +
                     ".send-robux-preset .icon{display:inline-flex!important;width:18px!important;height:18px!important;border:0!important;border-radius:0!important;flex:0 0 18px}" +
-                    ".send-robux-next{width:calc(100% - 40px);margin:0 20px 10px;height:48px;border:0;border-radius:9px;background:#3158e8;color:#fff;font-size:17px;font-weight:700;cursor:pointer;opacity:.55;box-sizing:border-box}" +
+                    ".send-robux-next{width:calc(100% - 40px);margin:0 20px 8px;border-top:1px solid rgba(0,0,0,.08);padding-top:1px;height:48px;border:0;border-radius:9px;background:#3158e8;color:#fff;font-size:17px;font-weight:700;cursor:pointer;opacity:.55;box-sizing:border-box}" +
                     ".send-robux-next.enabled{opacity:1}" +
                     ".send-robux-next:disabled{cursor:not-allowed}" +
-                    ".send-robux-divider{height:1px;margin:0 20px 10px;background:rgba(32,34,39,.14);transform:translateY(-8px)}" +
-                    ".send-robux-next{transform:translateY(-8px)}" +
-                    ".send-robux-footer{transform:translateY(-8px)}" +
                     ".send-robux-next{position:relative;display:flex;align-items:center;justify-content:center;gap:8px}" +
                     ".send-robux-spinner{display:none;width:14px;height:14px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:sendRobuxSpin .7s linear infinite}" +
                     ".send-robux-next.loading .send-robux-spinner{display:inline-block}" +
@@ -3316,34 +3316,26 @@
                     ".send-robux-success-title{font-size:22px;line-height:27px;font-weight:700;color:#202227;margin-bottom:5px}" +
                     ".send-robux-success-text{font-size:14px;line-height:20px;color:#6b6f76}" +
                     "@keyframes sendRobuxSuccessIn{from{opacity:0;transform:scale(.94) translateY(5px)}to{opacity:1;transform:scale(1) translateY(0)}}" +
-                    ".send-robux-confirm-overlay{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);opacity:1;transition:opacity .16s ease}" +
-                    ".send-robux-confirm-overlay.closing{opacity:0}" +
-                    ".send-robux-confirm-popup{width:min(372px,calc(100vw - 28px));height:430px;box-sizing:border-box;border-radius:14px;background:#fff;color:#202227;overflow:hidden;font-family:'Builder Sans','Helvetica Neue',Helvetica,Arial,sans-serif;box-shadow:0 14px 34px rgba(0,0,0,.24);animation:sendRobuxConfirmIn .16s ease-out}" +
-                    ".send-robux-confirm-header{height:47px;padding:10px 12px 8px 15px;box-sizing:border-box;display:flex;align-items:center;gap:10px;background:#fff}" +
-                    ".send-robux-confirm-title{display:flex;align-items:center;gap:7px;flex:1;font-size:17px;font-weight:700;line-height:22px}" +
-                    ".send-robux-confirm-title .icon{width:19px;height:19px;display:inline-flex;flex:0 0 19px}" +
-                    ".send-robux-confirm-balance{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:700}" +
-                    ".send-robux-confirm-balance .icon{width:17px;height:17px;display:inline-flex}" +
-                    ".send-robux-confirm-close{width:27px;height:27px;border:0;background:transparent;font-size:25px;line-height:25px;font-weight:400;color:#202227;padding:0;cursor:pointer}" +
-                    ".send-robux-confirm-profile{height:202px;margin:0 14px 10px;padding:18px 12px 10px;box-sizing:border-box;border-radius:8px;background:#f1f2f4;text-align:center;display:flex;flex-direction:column;align-items:center}" +
-                    ".send-robux-confirm-avatar{width:62px;height:62px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 7px;border:1px solid rgba(0,0,0,.08)}" +
-                    ".send-robux-confirm-name{font-size:15px;line-height:19px;font-weight:700;color:#202227}" +
-                    ".send-robux-confirm-username{font-size:13px;line-height:17px;color:#5f6368;margin-top:1px}" +
-                    ".send-robux-confirm-meta{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:17px;font-size:11px;line-height:15px;color:#4f545c}" +
-                    ".send-robux-confirm-connection,.send-robux-confirm-join{display:inline-flex;align-items:center;gap:4px}" +
-                    ".send-robux-confirm-connection:before{content:'●';font-size:8px}" +
-                    ".send-robux-confirm-join:before{content:'●';font-size:8px}" +
-                    ".send-robux-confirm-amount{height:66px;margin:0 14px 8px;border-radius:8px;background:#f1f2f4;display:flex;align-items:center;justify-content:center;gap:7px;font-size:32px;font-weight:700;line-height:38px}" +
-                    ".send-robux-confirm-amount .icon{width:29px;height:29px;display:inline-flex}" +
-                    ".send-robux-confirm-actions{display:flex;gap:7px;margin:0 14px 8px}" +
-                    ".send-robux-confirm-send,.send-robux-confirm-edit{height:34px;border:0;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;box-sizing:border-box}" +
-                    ".send-robux-confirm-send{flex:1;background:#3158e8;color:#fff}" +
-                    ".send-robux-confirm-send:disabled{opacity:.65;cursor:not-allowed}" +
-                    ".send-robux-confirm-edit{flex:1;background:#dfe1e7;color:#202227}" +
-                    ".send-robux-confirm-edit:disabled{opacity:.65;cursor:not-allowed}" +
-                    ".send-robux-confirm-note{margin:0 14px;font-size:9px;line-height:12px;color:#5f6368;text-align:left}" +
-                    "@keyframes sendRobuxConfirmIn{from{opacity:0;transform:scale(.97) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}" +
-                    ".send-robux-footer{text-align:center;padding:0 20px 13px;font-size:11px;font-weight:500;color:#5f6368;background:#fff;margin-top:0}" +
+                    ".send-robux-footer{text-align:center;padding:0 20px 13px;font-size:11px;font-weight:500;color:#5f6368;background:#fff}" +
+                    ".send-robux-profile-meta{min-height:18px;margin:-8px auto 12px;font-size:11px;line-height:16px;color:#6b6f76}" +
+                    ".send-robux-confirm-overlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.52);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}" +
+                    ".send-robux-confirm-popup{width:min(370px,calc(100vw - 28px));min-height:430px;box-sizing:border-box;border-radius:16px;background:#fff;color:#202227;box-shadow:0 18px 50px rgba(0,0,0,.30);overflow:hidden;font-family:'Builder Sans','Helvetica Neue',Helvetica,Arial,sans-serif}" +
+                    ".send-robux-confirm-header{height:48px;padding:0 16px;display:flex;align-items:center;gap:10px;box-sizing:border-box}" +
+                    ".send-robux-confirm-title{font-size:18px;font-weight:700;flex:1}" +
+                    ".send-robux-confirm-balance{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600}" +
+                    ".send-robux-confirm-close{width:28px;height:28px;border:0;background:transparent;font-size:25px;line-height:28px;color:#202227;cursor:pointer;padding:0}" +
+                    ".send-robux-confirm-profile{margin:0 16px;background:#f1f2f4;border-radius:4px;padding:22px 10px 20px;text-align:center;box-sizing:border-box}" +
+                    ".send-robux-confirm-avatar{width:68px;height:68px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 7px}" +
+                    ".send-robux-confirm-name{font-size:15px;line-height:20px;font-weight:700}" +
+                    ".send-robux-confirm-username{font-size:12px;line-height:17px;color:#6b6f76;margin-top:1px}" +
+                    ".send-robux-confirm-meta{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:16px;font-size:10px;line-height:15px;color:#5f6368}" +
+                    ".send-robux-confirm-amount{margin:12px 16px 8px;height:66px;background:#f1f2f4;border-radius:4px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:30px;font-weight:700}" +
+                    ".send-robux-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:0 16px}" +
+                    ".send-robux-confirm-send,.send-robux-confirm-edit{height:40px;border:0;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer}" +
+                    ".send-robux-confirm-send{background:#3158e8;color:#fff}" +
+                    ".send-robux-confirm-edit{background:#dfe1e8;color:#202227}" +
+                    ".send-robux-confirm-send:disabled,.send-robux-confirm-edit:disabled{opacity:.55;cursor:not-allowed}" +
+                    ".send-robux-confirm-disclaimer{font-size:9px;line-height:12px;color:#6b6f76;padding:10px 17px 16px;text-align:left}" +
                     ".send-robux-error{color:#c92828;font-size:12px;min-height:16px;margin-top:-9px;margin-bottom:7px}" +
                     ".send-robux-empty{padding:18px 20px;text-align:center;opacity:.65;font-size:14px;color:#202227}" +
                     ".fui-base-sheet-content .icon{color:#202227}" +
@@ -3506,196 +3498,172 @@
                             if (popupOverlay.parentNode) popupOverlay.parentNode.removeChild(popupOverlay);
                             nextButton.disabled = false;
                             nextButton.classList.remove("loading");
-                            giftLabel.textContent = "Gift";
+                            giftLabel.textContent = "Next";
                             updateAmountState();
                         }, 180);
                     }, 5500);
                 }
 
-                function getCurrentUserId() {
-                    var meta = document.querySelector('meta[name="user-data"]');
-                    return meta ? String(meta.getAttribute("data-userid") || "").trim() : "";
+                var selectedUser = null;
+                var selectedUserProfile = null;
+
+                function formatJoinedDate(created) {
+                    if (!created) return "Joined date unavailable";
+                    var date = new Date(created);
+                    if (Number.isNaN(date.getTime())) return "Joined date unavailable";
+                    return "Joined in " + date.getUTCFullYear();
                 }
 
-                function formatJoinDate(value) {
-                    if (!value) return "Joined date unavailable";
-                    var date = new Date(value);
-                    if (isNaN(date.getTime())) return "Joined date unavailable";
-                    return "Joined " + date.toLocaleDateString(undefined, { year: "numeric", month: "long" });
-                }
-
-                async function getRecipientProfileInfo(userId) {
-                    var result = { created: null, friend: null };
-
-                    try {
-                        var profileResponse = await fetch("https://users.roblox.com/v1/users/" + encodeURIComponent(userId), {
+                function fetchSelectedProfile(userId) {
+                    return fetch(
+                        ROBLOX_PROXY_API + "?action=profile&userId=" + encodeURIComponent(String(userId)) +
+                            (ROBLOX_CURRENT_USER_ID ? "&currentUserId=" + encodeURIComponent(String(ROBLOX_CURRENT_USER_ID)) : ""),
+                        {
                             method: "GET",
                             credentials: "omit",
+                            mode: "cors",
+                            cache: "no-store",
                             headers: { "Accept": "application/json" }
-                        });
-                        if (profileResponse.ok) {
-                            var profile = await profileResponse.json();
-                            result.created = profile.created || null;
                         }
-                    } catch (_) {}
-
-                    var currentUserId = getCurrentUserId();
-                    if (currentUserId && currentUserId !== userId) {
-                        try {
-                            var friendResponse = await fetch(
-                                "https://friends.roblox.com/v1/users/" + encodeURIComponent(currentUserId) + "/friends/statuses?userIds=" + encodeURIComponent(userId),
-                                { method: "GET", credentials: "omit", headers: { "Accept": "application/json" } }
-                            );
-                            if (friendResponse.ok) {
-                                var friendData = await friendResponse.json();
-                                var status = friendData && friendData.data && friendData.data[0] ? friendData.data[0].status : "";
-                                result.friend = String(status).toLowerCase() === "friends";
-                            }
-                        } catch (_) {}
-                    }
-
-                    return result;
+                    ).then(function (response) {
+                        if (!response.ok) throw new Error("Profile request failed (HTTP " + response.status + ")");
+                        return response.json();
+                    });
                 }
 
-                function closeConfirmPopup(popupOverlay) {
-                    if (popupOverlay && popupOverlay.parentNode) {
-                        popupOverlay.classList.add("closing");
-                        setTimeout(function () {
-                            if (popupOverlay.parentNode) popupOverlay.parentNode.removeChild(popupOverlay);
-                        }, 160);
-                    }
-                }
-
-                function showSendConfirmPopup(rawAmount, user) {
+                function showConfirmationPopup(rawAmount, user, profile) {
                     var amount = formatRobuxAmount(rawAmount);
-                    var popupOverlay = document.createElement("div");
-                    popupOverlay.className = "send-robux-confirm-overlay";
-                    popupOverlay.innerHTML =
-                        "<div class=\"send-robux-confirm-popup\" role=\"dialog\" aria-modal=\"true\">" +
+                    var confirmOverlay = document.createElement("div");
+                    confirmOverlay.className = "send-robux-confirm-overlay";
+
+                    var avatarSrc = avatarCache.get(String(user.id)) || getAvatarFallbackUrl();
+                    var displayName = profile && profile.displayName ? profile.displayName : (user.displayName || user.name || "");
+                    var username = profile && profile.name ? profile.name : (user.name || "");
+                    var joined = formatJoinedDate(profile && profile.created);
+                    var connection = profile && profile.connection ? profile.connection : "Connection unavailable";
+
+                    confirmOverlay.innerHTML =
+                        "<div class=\"send-robux-confirm-popup\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"send-robux-confirm-title\">" +
                             "<div class=\"send-robux-confirm-header\">" +
-                                "<div class=\"send-robux-confirm-title\"><span class=\"icon icon-regular-roblox-plus size-small\"></span><span>Send Robux</span></div>" +
-                                "<div class=\"send-robux-confirm-balance\"><span class=\"icon icon-regular-robux size-small\"></span><span class=\"send-robux-confirm-balance-value\"></span></div>" +
+                                "<div id=\"send-robux-confirm-title\" class=\"send-robux-confirm-title\">Send Robux</div>" +
+                                "<div class=\"send-robux-confirm-balance\"><span class=\"icon icon-regular-robux size-small\"></span>" + escapeHtml(formatBigAmount(localStorage.getItem("robuxBalance") || "13942382")) + "</div>" +
                                 "<button type=\"button\" class=\"send-robux-confirm-close\" aria-label=\"Close\">×</button>" +
                             "</div>" +
                             "<div class=\"send-robux-confirm-profile\">" +
-                                "<img class=\"send-robux-confirm-avatar\" alt=\"\">" +
-                                "<div class=\"send-robux-confirm-name\"></div>" +
-                                "<div class=\"send-robux-confirm-username\"></div>" +
-                                "<div class=\"send-robux-confirm-meta\"><span class=\"send-robux-confirm-connection\">Connection unavailable</span><span class=\"send-robux-confirm-join\">Joined date unavailable</span></div>" +
+                                "<img class=\"send-robux-confirm-avatar\" src=\"" + escapeHtml(avatarSrc) + "\" alt=\"" + escapeHtml(username) + "\">" +
+                                "<div class=\"send-robux-confirm-name\">" + escapeHtml(displayName) + "</div>" +
+                                "<div class=\"send-robux-confirm-username\">@" + escapeHtml(username) + "</div>" +
+                                "<div class=\"send-robux-confirm-meta\">" +
+                                    "<span>● " + escapeHtml(connection) + "</span>" +
+                                    "<span>● " + escapeHtml(joined) + "</span>" +
+                                "</div>" +
                             "</div>" +
                             "<div class=\"send-robux-confirm-amount\"><span class=\"icon icon-regular-robux size-large\"></span><span>" + escapeHtml(amount) + "</span></div>" +
-                            "<div class=\"send-robux-confirm-actions\"><button type=\"button\" class=\"send-robux-confirm-send\">Send</button><button type=\"button\" class=\"send-robux-confirm-edit\">Edit</button></div>" +
-                            "<div class=\"send-robux-confirm-note\">You need an age check or parental consent to send Robux. Once you send, you cannot cancel.</div>" +
+                            "<div class=\"send-robux-confirm-actions\">" +
+                                "<button type=\"button\" class=\"send-robux-confirm-send\">Send</button>" +
+                                "<button type=\"button\" class=\"send-robux-confirm-edit\">Edit</button>" +
+                            "</div>" +
+                            "<div class=\"send-robux-confirm-disclaimer\">You need an age check or parental consent to send Robux. Once you send, you cannot cancel.</div>" +
                         "</div>";
 
-                    document.body.appendChild(popupOverlay);
+                    document.body.appendChild(confirmOverlay);
 
-                    var avatar = popupOverlay.querySelector(".send-robux-confirm-avatar");
-                    var name = popupOverlay.querySelector(".send-robux-confirm-name");
-                    var username = popupOverlay.querySelector(".send-robux-confirm-username");
-                    var connection = popupOverlay.querySelector(".send-robux-confirm-connection");
-                    var join = popupOverlay.querySelector(".send-robux-confirm-join");
-                    var send = popupOverlay.querySelector(".send-robux-confirm-send");
-                    var edit = popupOverlay.querySelector(".send-robux-confirm-edit");
-                    var close = popupOverlay.querySelector(".send-robux-confirm-close");
+                    var confirmPopup = confirmOverlay.querySelector(".send-robux-confirm-popup");
+                    var confirmClose = confirmOverlay.querySelector(".send-robux-confirm-close");
+                    var editButton = confirmOverlay.querySelector(".send-robux-confirm-edit");
+                    var sendButton = confirmOverlay.querySelector(".send-robux-confirm-send");
 
-                    var cachedAvatar = avatarCache.get(String(user.id));
-                    avatar.src = cachedAvatar || getAvatarFallbackUrl();
-                    avatar.onerror = function () { addAvatarFallback(avatar); };
-                    name.textContent = user.displayName || user.name || "";
-                    username.textContent = "@" + (user.name || "");
+                    function closeConfirmation() {
+                        if (confirmOverlay.parentNode) confirmOverlay.remove();
+                    }
 
-                    var balanceNode = popupOverlay.querySelector(".send-robux-confirm-balance-value");
-                    var balanceText = document.getElementById("nav-robux-amount");
-                    balanceNode.textContent = balanceText ? balanceText.textContent.trim() : "0";
-
-                    getRecipientProfileInfo(String(user.id)).then(function (info) {
-                        join.textContent = formatJoinDate(info.created);
-                        if (info.friend === true) {
-                            connection.textContent = "Friends";
-                        } else if (info.friend === false) {
-                            connection.textContent = "Not friends";
-                        } else {
-                            connection.textContent = "Connection unavailable";
-                        }
+                    confirmClose.addEventListener("click", closeConfirmation);
+                    confirmOverlay.addEventListener("click", function (event) {
+                        if (event.target === confirmOverlay) closeConfirmation();
                     });
 
-                    function doGift() {
-                        send.disabled = true;
-                        edit.disabled = true;
-                        send.textContent = "Sending...";
-                        nextButton.classList.add("loading");
-                        nextButton.disabled = true;
-                        giftLabel.textContent = "Sending...";
+                    editButton.addEventListener("click", function () {
+                        closeConfirmation();
+                        nextButton.disabled = false;
+                        nextButton.classList.remove("loading");
+                        giftLabel.textContent = "Next";
+                        updateAmountState();
+                        setTimeout(function () { amountInput.focus(); }, 0);
+                    });
 
-                        var recipient = user.name || "";
-                        var displayName = user.displayName || user.name || "";
+                    sendButton.addEventListener("click", async function () {
+                        sendButton.disabled = true;
+                        editButton.disabled = true;
+                        sendButton.textContent = "Sending...";
 
-                        fetch(VISUAL_GIFT_API, {
-                            method: "POST",
-                            credentials: "omit",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "Accept": "application/json"
-                            },
-                            body: JSON.stringify({
-                                client: getVisualClientId(),
-                                amount: rawAmount,
-                                recipient: recipient
-                            })
-                        }).then(async function (response) {
+                        try {
+                            var response = await fetch(VISUAL_GIFT_API, {
+                                method: "POST",
+                                credentials: "omit",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "Accept": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    client: getVisualClientId(),
+                                    amount: rawAmount,
+                                    recipient: username
+                                })
+                            });
+
                             var data = {};
                             try { data = await response.json(); } catch (_) {}
+
                             if (!response.ok || !data.success) {
                                 throw new Error(data.error || "Unable to complete the visual gift.");
                             }
-                            await new Promise(function (resolve) { setTimeout(resolve, 900); });
+
                             localStorage.setItem("robuxBalance", String(data.balance));
                             updateVisibleBalance(data.balance);
-                            closeConfirmPopup(popupOverlay);
+                            closeConfirmation();
                             showGiftSuccessPopup(rawAmount, displayName, data.balance);
-                        }).catch(function (error) {
-                            console.error("Visual gift failed:", error);
-                            send.disabled = false;
-                            edit.disabled = false;
-                            send.textContent = "Send";
-                            nextButton.classList.remove("loading");
-                            nextButton.disabled = false;
-                            giftLabel.textContent = "Next";
+                        } catch (error) {
+                            sendButton.disabled = false;
+                            editButton.disabled = false;
+                            sendButton.textContent = "Send";
                             amountError.textContent = error && error.message ? error.message : "Unable to complete the gift.";
-                            updateAmountState();
-                        });
-                    }
-
-                    send.addEventListener("click", doGift);
-                    edit.addEventListener("click", function () { closeConfirmPopup(popupOverlay); });
-                    close.addEventListener("click", function () { closeConfirmPopup(popupOverlay); });
-                    popupOverlay.addEventListener("click", function (event) {
-                        if (event.target === popupOverlay) closeConfirmPopup(popupOverlay);
+                        }
                     });
+
+                    return confirmPopup;
                 }
 
-                nextButton.addEventListener("click", function () {
+                nextButton.addEventListener("click", async function () {
                     var raw = getRawAmount();
-                    if (!raw || /^0+$/.test(raw) || nextButton.classList.contains("loading")) {
-                        return;
-                    }
+                    if (!raw || /^0+$/.test(raw) || nextButton.classList.contains("loading")) return;
 
-                    var userId = selectedAvatar ? selectedAvatar.dataset.userId : "";
                     var recipient = selectedUsername ? selectedUsername.textContent.replace(/^@/, "").trim() : "";
-                    if (!userId || !recipient) {
+                    if (!recipient || !selectedUser) {
                         amountError.textContent = "Select a user first.";
                         return;
                     }
 
-                    var user = {
-                        id: userId,
-                        name: recipient,
-                        displayName: selectedName ? selectedName.textContent.trim() : recipient
-                    };
-
+                    nextButton.classList.add("loading");
+                    nextButton.disabled = true;
+                    giftLabel.textContent = "Loading...";
                     amountError.textContent = "";
-                    showSendConfirmPopup(raw, user);
+
+                    try {
+                        if (!selectedUserProfile || String(selectedUserProfile.id) !== String(selectedUser.id)) {
+                            selectedUserProfile = await fetchSelectedProfile(selectedUser.id);
+                        }
+
+                        showConfirmationPopup(raw, selectedUser, selectedUserProfile);
+                        nextButton.classList.remove("loading");
+                        nextButton.disabled = false;
+                        giftLabel.textContent = "Next";
+                    } catch (error) {
+                        console.error("Roblox profile lookup failed:", error);
+                        amountError.textContent = "Could not load this user's profile. Please try again.";
+                        nextButton.disabled = false;
+                        nextButton.classList.remove("loading");
+                        giftLabel.textContent = "Next";
+                    }
                 });
                 adjustAmountInputWidth();
 
@@ -3837,6 +3805,21 @@
                             if (selectedUsername) {
                                 selectedUsername.textContent = "@" + (user.name || "");
                             }
+
+                            selectedUser = user;
+                            selectedUserProfile = null;
+                            var profileMeta = overlay.querySelector("[data-profile-meta]");
+                            if (profileMeta) profileMeta.textContent = "Loading profile...";
+
+                            fetchSelectedProfile(user.id).then(function(profile) {
+                                if (!selectedUser || String(selectedUser.id) !== String(user.id)) return;
+                                selectedUserProfile = profile;
+                                if (profileMeta) {
+                                    profileMeta.textContent = formatJoinedDate(profile.created);
+                                }
+                            }).catch(function() {
+                                if (profileMeta) profileMeta.textContent = "Profile details unavailable";
+                            });
 
                             amountInput.value = "";
                             amountInput.placeholder = "0";
