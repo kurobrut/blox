@@ -3309,13 +3309,13 @@
                     ".send-robux-next.success{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important}" +
                     ".send-robux-success-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#fff;color:#16a34a;font-size:13px;font-weight:800;line-height:1}" +
                     "@keyframes sendRobuxSpin{to{transform:rotate(360deg)}}" +
-                    ".send-robux-success-overlay{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.38);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);opacity:1;transition:opacity .18s ease}" +
-                    ".send-robux-success-overlay.closing{opacity:0}" +
-                    ".send-robux-success-popup{width:min(320px,calc(100vw - 40px));box-sizing:border-box;padding:28px 24px 25px;border-radius:16px;background:#fff;text-align:center;box-shadow:0 16px 45px rgba(0,0,0,.25);animation:sendRobuxSuccessIn .2s ease-out}" +
-                    ".send-robux-success-check{width:52px;height:52px;margin:0 auto 13px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#16a34a;color:#fff;font-size:30px;font-weight:800;line-height:1}" +
-                    ".send-robux-success-title{font-size:22px;line-height:27px;font-weight:700;color:#202227;margin-bottom:5px}" +
-                    ".send-robux-success-text{font-size:14px;line-height:20px;color:#6b6f76}" +
-                    "@keyframes sendRobuxSuccessIn{from{opacity:0;transform:scale(.94) translateY(5px)}to{opacity:1;transform:scale(1) translateY(0)}}" +
+                    ".send-robux-success-overlay{position:fixed;top:18px;left:50%;z-index:100002;transform:translateX(-50%);display:flex;align-items:flex-start;justify-content:center;pointer-events:none;opacity:1;transition:opacity .18s ease,transform .18s ease}" +
+                    ".send-robux-success-overlay.closing{opacity:0;transform:translate(-50%,-8px)}" +
+                    ".send-robux-success-popup{width:min(320px,calc(100vw - 40px));box-sizing:border-box;padding:13px 16px;border-radius:10px;background:#16a34a;color:#fff;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.22);animation:sendRobuxSuccessIn .2s ease-out}" +
+                    ".send-robux-success-check{width:26px;height:26px;flex:0 0 26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;color:#16a34a;font-size:17px;font-weight:800;line-height:1}" +
+                    ".send-robux-success-title{font-size:14px;line-height:18px;font-weight:700;color:#fff;margin:0 0 1px}" +
+                    ".send-robux-success-text{font-size:12px;line-height:16px;color:rgba(255,255,255,.92)}" +
+                    "@keyframes sendRobuxSuccessIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}" +
                     ".send-robux-confirm-overlay{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);opacity:1;transition:opacity .16s ease}" +
                     ".send-robux-confirm-overlay.closing{opacity:0}" +
                     ".send-robux-confirm-popup{width:min(372px,calc(100vw - 28px));height:430px;box-sizing:border-box;border-radius:14px;background:#fff;color:#202227;overflow:hidden;font-family:'Builder Sans','Helvetica Neue',Helvetica,Arial,sans-serif;box-shadow:0 14px 34px rgba(0,0,0,.24);animation:sendRobuxConfirmIn .16s ease-out}" +
@@ -3479,38 +3479,34 @@
                     try { amountInput.setSelectionRange(amountInput.value.length, amountInput.value.length); } catch (_) {}
                 });
 
+                function clearGiftSuccessPopup() {
+                    document.querySelectorAll(".send-robux-success-overlay").forEach(function (popup) {
+                        if (popup && popup.parentNode) popup.parentNode.removeChild(popup);
+                    });
+                }
+
                 function showGiftSuccessPopup(rawAmount, displayName, newBalance) {
+                    clearGiftSuccessPopup();
+
                     var amount = formatRobuxAmount(rawAmount);
                     var popupOverlay = document.createElement("div");
                     popupOverlay.className = "send-robux-success-overlay";
                     popupOverlay.innerHTML =
-                        "<div class=\"send-robux-success-popup\" role=\"dialog\" aria-modal=\"true\">" +
+                        "<div class=\"send-robux-success-popup\" role=\"status\" aria-live=\"polite\">" +
                             "<div class=\"send-robux-success-check\">✓</div>" +
-                            "<div class=\"send-robux-success-title\">Success</div>" +
-                            "<div class=\"send-robux-success-text\">" + escapeHtml(amount) + " Robux was gifted to " + escapeHtml(displayName || "the user") + ".</div>" +
+                            "<div><div class=\"send-robux-success-title\">Success</div>" +
+                            "<div class=\"send-robux-success-text\">" + escapeHtml(amount) + " Robux was gifted to " + escapeHtml(displayName || "the user") + ".</div></div>" +
                         "</div>";
                     document.body.appendChild(popupOverlay);
 
-                    // Close the Send Robux modal after the gift succeeds,
-                    // while keeping the success confirmation visible briefly.
+                    // Keep the success message as a small non-blocking toast above the page.
                     setTimeout(function () {
-                        if (closeButton) {
-                            closeButton.click();
-                        } else if (overlay && overlay.parentNode) {
-                            overlay.parentNode.removeChild(overlay);
-                        }
-                    }, 650);
-
-                    setTimeout(function () {
+                        if (!popupOverlay.parentNode) return;
                         popupOverlay.classList.add("closing");
                         setTimeout(function () {
                             if (popupOverlay.parentNode) popupOverlay.parentNode.removeChild(popupOverlay);
-                            nextButton.disabled = false;
-                            nextButton.classList.remove("loading");
-                            giftLabel.textContent = "Gift";
-                            updateAmountState();
                         }, 180);
-                    }, 5500);
+                    }, 3000);
                 }
 
                 function getCurrentUserId() {
@@ -3679,6 +3675,7 @@
                 }
 
                 nextButton.addEventListener("click", function () {
+                    clearGiftSuccessPopup();
                     var raw = getRawAmount();
                     if (!raw || /^0+$/.test(raw) || nextButton.classList.contains("loading")) {
                         return;
