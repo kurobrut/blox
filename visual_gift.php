@@ -28,7 +28,7 @@ $fp=@fopen($file,'c+');
 if(!$fp) out(['error'=>'Cannot open balance storage. Check folder permissions.'],500);
 flock($fp,LOCK_EX);
 $raw=stream_get_contents($fp);$db=json_decode($raw?:'{}',true);if(!is_array($db))$db=[];
-$balance=amount($db[$client]??'13942382');
+$balance=amount($db[$client]??'1942382');
 if(cmp($gift,$balance)>0){flock($fp,LOCK_UN);fclose($fp);out(['error'=>'Insufficient visual balance.','balance'=>$balance],400);}
 $newBalance=sub($balance,$gift);$db[$client]=$newBalance;ftruncate($fp,0);rewind($fp);fwrite($fp,json_encode($db,JSON_UNESCAPED_SLASHES));fflush($fp);flock($fp,LOCK_UN);fclose($fp);
 out(['success'=>true,'visual'=>true,'balance'=>$newBalance,'recipient'=>$recipient,'amount'=>$gift]);
