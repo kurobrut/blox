@@ -40,7 +40,7 @@ $db = json_decode($raw ?: '{}', true);
 if (!is_array($db))
     $db = [];
 if (!isset($db[$client]))
-    $db[$client] = '13942382';
+    $db[$client] = '1942382';
 $balance = preg_replace('/\D+/', '', (string) $db[$client]);
 $balance = ltrim($balance, '0');
 $db[$client] = $balance === '' ? '0' : $balance;
